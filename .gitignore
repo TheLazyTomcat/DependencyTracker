@@ -1,0 +1,10 @@
+!.gitkeep
+Thumbs.db
+*.dcu
+*.~*
+*.exe
+*.dll
+*.inl
+*.lei
+*.log
+depstrack.dat
