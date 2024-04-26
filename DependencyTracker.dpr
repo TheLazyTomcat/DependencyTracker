@@ -16,7 +16,8 @@ uses
   ProjectNameForm in 'ProjectNameForm.pas' {fProjectNameForm},
   ProjectFrame in 'ProjectFrame.pas' {frmProjectFrame: TFrame},
   TextEditForm in 'TextEditForm.pas' {fTextEditForm},
-  ProjectsSelectForm in 'ProjectsSelectForm.pas' {fProjectsSelectForm};
+  ProjectsSelectForm in 'ProjectsSelectForm.pas' {fProjectsSelectForm},
+  TemplateSettingsForm in 'TemplateSettingsForm.pas' {fTemplateSettingsForm};
 
 {$R *.res}
 
@@ -27,7 +28,9 @@ begin
   Application.CreateForm(TfProjectNameForm, fProjectNameForm);
   Application.CreateForm(TfTextEditForm, fTextEditForm);
   Application.CreateForm(TfProjectsSelectForm, fProjectsSelectForm);
+  Application.CreateForm(TfTemplateSettingsForm, fTemplateSettingsForm);
   fProjectNameForm.Initialize(fMainForm.Manager);
   fProjectsSelectForm.Initialize(fMainForm.Manager);
+  fTemplateSettingsForm.Initialize(fMainForm.Manager);
   Application.Run;
 end.

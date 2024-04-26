@@ -26,8 +26,8 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="1.979899"
-     inkscape:cx="328.60453"
-     inkscape:cy="859.79109"
+     inkscape:cx="286.43983"
+     inkscape:cy="857.24122"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -55,7 +55,7 @@
     <circle
        style="opacity:1;fill:none;fill-opacity:1;stroke:#91ecff;stroke-width:9.090909;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        id="path4138"
-       cx="316.42862"
+       cx="293.19678"
        cy="110.21935"
        r="16.883116"
        inkscape:export-xdpi="102.98077"
@@ -72,7 +72,7 @@
        style="opacity:1;fill:none;fill-opacity:1;stroke:#91ecff;stroke-width:9.090909;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        id="circle4146"
        cx="226.4286"
-       cy="289.50504"
+       cy="217.29552"
        r="16.883116"
        inkscape:export-xdpi="102.98077"
        inkscape:export-ydpi="102.98077" />
@@ -86,25 +86,34 @@
        inkscape:export-ydpi="102.98077" />
     <path
        style="fill:none;fill-rule:evenodd;stroke:#91ecff;stroke-width:10;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m 316.42857,127.3622 0,34.28572 -90,1.42857 0,108.57143"
-       id="path4150"
-       inkscape:connector-curvature="0"
-       sodipodi:nodetypes="cccc"
-       inkscape:export-xdpi="102.98077"
-       inkscape:export-ydpi="102.98077" />
-    <path
-       style="fill:none;fill-rule:evenodd;stroke:#91ecff;stroke-width:10;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m 315,161.64792 44.28571,0 0,55.71429 47.14286,0 0,55"
+       d="m 278.12944,161.64792 83.29913,0 0,38.5417 m 17.05004,17.17259 27.94996,0 0,55"
        id="path4152"
        inkscape:connector-curvature="0"
-       sodipodi:nodetypes="ccccc"
+       sodipodi:nodetypes="cccccc"
        inkscape:export-xdpi="102.98077"
        inkscape:export-ydpi="102.98077" />
     <path
        style="fill:none;fill-rule:evenodd;stroke:#91ecff;stroke-width:10;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m 360,217.36221 -44.28571,0 0,56.42857"
+       d="m 343.33248,217.36221 -26.9039,0 0,56.42857"
        id="path4154"
        inkscape:connector-curvature="0"
+       inkscape:export-xdpi="102.98077"
+       inkscape:export-ydpi="102.98077"
+       sodipodi:nodetypes="ccc" />
+    <circle
+       inkscape:export-ydpi="102.98077"
+       inkscape:export-xdpi="102.98077"
+       r="16.883116"
+       cy="217.29552"
+       cx="361.42862"
+       id="circle4140"
+       style="opacity:1;fill:none;fill-opacity:1;stroke:#91ecff;stroke-width:9.090909;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#91ecff;stroke-width:10;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 292.94424,127.06248 0,34.59773 -66.60879,0 0,39.1434"
+       id="path4146"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cccc"
        inkscape:export-xdpi="102.98077"
        inkscape:export-ydpi="102.98077" />
   </g>

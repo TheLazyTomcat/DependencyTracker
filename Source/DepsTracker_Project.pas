@@ -28,7 +28,7 @@ const
   DT_PROJLIST_INDIR_DEPENDENTS   = 3;
 
 type
-  TDTInterlockedOperation = (iopDepsEnum,iopDpdsEnum,iopDepsSort,iopDpdsSort);
+  TDTInterlockedOperation = (iopDepsEnum,iopDpdsEnum,iopTreeEnum);
 
   TDTInterlockedOperations = set of TDTInterlockedOperation;
 
@@ -101,6 +101,7 @@ type
     // enumerations, traversals
     procedure EnumerateDependencies(Vector: TObject); virtual;
     procedure EnumerateDependents(Vector: TObject); virtual;
+    procedure EnumerateTree(Node: Pointer); virtual;
     // object init/final
     procedure Initialize(const Name: String); virtual;
     procedure Finalize; virtual;
@@ -145,6 +146,7 @@ type
     procedure SaveToStream(Stream: TStream); virtual;
     // reports
     Function CreateDependencyReport: TStrings; virtual;
+    Function CreateDependencyTree: TStrings; virtual;
     // properties
     property Index: Integer read fIndex write fIndex;
     property Name: String read fName write SetName;
@@ -174,7 +176,7 @@ implementation
 
 uses
   SysUtils,
-  StrRect, ListSorters, BinaryStreamingLite, MemVector;
+  StrRect, ListSorters, BinaryStreamingLite, MemVector, AuxMath;
 
 {===============================================================================
 --------------------------------------------------------------------------------
@@ -316,6 +318,23 @@ end;
                                    TDTProject
 --------------------------------------------------------------------------------
 ===============================================================================}
+type
+  PDTTreeNode = ^TDTTreeNode;
+  TDTTreeNode = record
+    ParentNode:         PDTTreeNode;
+    Project:            TDTPRoject;
+    Conditional:        Boolean;
+    Repeating:          Boolean;
+    SubNodes:           array of PDTTreeNode;
+    LeafsOnly:          Boolean;
+    UnconditionalOnly:  Boolean;
+    CompactSubTree:     Boolean;
+    StringBuilding:     record
+      NodePath:           String;
+      NextPath:           String;
+    end;
+  end;
+  
 {===============================================================================
     TDTProject - class implementation
 ===============================================================================}
@@ -713,6 +732,42 @@ end;
 
 //------------------------------------------------------------------------------
 
+procedure TDTProject.EnumerateTree(Node: Pointer);
+var
+  i:  Integer;
+begin
+PDTTreeNode(Node)^.Project := Self;
+PDTTreeNode(Node)^.Conditional := False;
+PDTTreeNode(Node)^.Repeating := False;
+PDTTreeNode(Node)^.SubNodes := nil;
+PDTTreeNode(Node)^.LeafsOnly := True;
+PDTTreeNode(Node)^.UnconditionalOnly := True;
+If BeginInterlockedOperation(iopTreeEnum) then
+  try
+    SetLength(PDTTreeNode(Node)^.SubNodes,DependenciesCount);
+    For i := DependenciesLowIndex to DependenciesHighIndex do
+      begin
+        New(PDTTreeNode(Node)^.SubNodes[i]);
+        PDTTreeNode(Node)^.SubNodes[i]^.ParentNode := Node;
+        Dependencies[i].EnumerateTree(PDTTreeNode(Node)^.SubNodes[i]);
+        PDTTreeNode(Node)^.SubNodes[i]^.Conditional := fDependencies[i].Conditional;
+        If Length(PDTTreeNode(Node)^.SubNodes[i]^.SubNodes) > 0 then
+          PDTTreeNode(Node)^.LeafsOnly := False;
+        If PDTTreeNode(Node)^.SubNodes[i]^.Conditional then
+          PDTTreeNode(Node)^.UnconditionalOnly := False;
+      end;
+  finally
+    EndInterlockedOperation(iopTreeEnum);
+  end
+else
+  begin
+    PDTTreeNode(Node)^.Repeating := True;
+    PDTTreeNode(Node)^.SubNodes := nil;
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
 procedure TDTProject.Initialize(const Name: String);
 begin
 fIndex := -1;
@@ -1101,9 +1156,13 @@ end;
 Function TDTProject.FullName: String;
 begin
 If fProjectType <> ptOthers then
-  Result := Format('(%s) %s',[DT_PROJTYPE_TAGS[fProjectType],fName])
-else
-  Result := Format('      %s',[fName]);
+  begin
+    If fFlagged then
+      Result := Format('(%s)*%s',[DT_PROJTYPE_TAGS[fProjectType],fName])
+    else
+      Result := Format('(%s) %s',[DT_PROJTYPE_TAGS[fProjectType],fName]);
+  end
+else Result := Format('      %s',[fName]);
 end;
 
 //------------------------------------------------------------------------------
@@ -1250,6 +1309,111 @@ If DependenciesCount > 0 then
       end;
   end
 else Result.Add('    none')
+end;
+
+//------------------------------------------------------------------------------
+
+Function TDTProject.CreateDependencyTree: TStrings;
+
+  procedure CheckCompact(Node: PDTTreeNode);
+  var
+    i:    Integer;
+    Temp: Boolean;
+  begin
+    If Length(Node^.SubNodes) > 0 then
+      begin
+        Temp := True;
+        For i := Low(Node^.SubNodes) to High(Node^.SubNodes) do
+          begin
+            CheckCompact(Node^.SubNodes[i]);
+            If not Node^.SubNodes[i]^.CompactSubTree then
+              Temp := False;
+          end;
+        If not Temp then
+          For i := Low(Node^.SubNodes) to High(Node^.SubNodes) do
+            Node^.SubNodes[i]^.CompactSubTree := False;
+        If Length(Node^.SubNodes) = 1 then
+          Node^.CompactSubTree := Node^.SubNodes[0]^.CompactSubTree
+        else
+          Node^.CompactSubTree := False;
+      end
+    else Node^.CompactSubTree := True;
+  end;
+
+//--  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --    
+
+  procedure ProcessNode(Node: PDTTreeNode);
+  var
+    i:        Integer;
+    NodeStr:  String;
+  begin
+    For i := Low(Node^.SubNodes) to High(Node^.SubNodes) do
+      begin
+        If not Node^.UnconditionalOnly then
+          begin
+            If Node^.SubNodes[i]^.Conditional then
+              NodeStr := '* ' + Node^.SubNodes[i]^.Project.Name
+            else
+              NodeStr := '  ' + Node^.SubNodes[i]^.Project.Name;
+          end
+        else NodeStr := Node^.SubNodes[i]^.Project.Name;
+        If Node^.SubNodes[i]^.Repeating then
+          NodeStr := NodeStr + ' (...)';
+        If i <= Low(Node^.SubNodes) then
+          Node^.SubNodes[i]^.StringBuilding.NodePath := Node^.StringBuilding.NodePath + ' --- ' + NodeStr
+        else
+          Node^.SubNodes[i]^.StringBuilding.NodePath := Node^.StringBuilding.NextPath + '  |- ' + NodeStr;
+        Node^.SubNodes[i]^.StringBuilding.NextPath := Node^.StringBuilding.NextPath +
+          IfThen(i < High(Node^.SubNodes),'  |  ','     ') + StringOfchar(' ',Length(NodeStr));
+        If Length(Node^.SubNodes[i]^.SubNodes) <= 0 then
+          Result.Add(Node^.SubNodes[i]^.StringBuilding.NodePath);
+        ProcessNode(Node^.SubNodes[i]);         
+        If not Node^.SubNodes[i]^.CompactSubTree and (i < High(Node^.SubNodes)) then
+          Result.Add(TrimRight(Node^.SubNodes[i]^.StringBuilding.NextPath));
+      end;
+  end;
+
+//--  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --
+
+  procedure FreeNode(var Node: PDTTreeNode);
+  var
+    i:  Integer;
+  begin
+    For i := Low(Node^.SubNodes) to High(Node^.SubNodes) do
+      FreeNode(Node^.SubNodes[i]);
+    Node^.SubNodes := nil;
+    Dispose(Node);
+    Node := nil;
+  end;
+
+var
+  BaseNode: PDTTreeNode;
+begin
+{
+  Creates tree in the form:
+
+    Item_A --- Item_1 --- Item_I
+            |          |- Item_II
+            |          |- Item_III
+            |
+            |- Item_2 --- Item_IV
+            |
+            |- Item_3 --- Item_V --- Item_a
+                       |
+                       |- Item_VI --- Item_b
+                                   |- Item_c
+}
+Result := TStringList.Create;
+New(BaseNode);
+try
+  EnumerateTree(BaseNode);
+  CheckCompact(BaseNode);
+  BaseNode^.StringBuilding.NodePath := Name;
+  BaseNode^.StringBuilding.NextPath := StringOfChar(' ',Length(Name));
+  ProcessNode(BaseNode);
+finally
+  FreeNode(BaseNode);
+end;
 end;
 
 end.

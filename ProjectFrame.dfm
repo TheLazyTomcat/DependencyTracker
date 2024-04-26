@@ -80,7 +80,7 @@ object frmProjectFrame: TfrmProjectFrame
       Height = 9
       Shape = bsBottomLine
     end
-    object shrNameBackground: TShape
+    object shpNameBackground: TShape
       Left = 0
       Top = 0
       Width = 664
@@ -88,9 +88,9 @@ object frmProjectFrame: TfrmProjectFrame
       Pen.Style = psClear
     end
     object lblName: TLabel
-      Left = 16
+      Left = 24
       Top = 0
-      Width = 633
+      Width = 617
       Height = 33
       Alignment = taCenter
       AutoSize = False
@@ -123,6 +123,18 @@ object frmProjectFrame: TfrmProjectFrame
       OnClick = lblEditCondNotesClick
       OnMouseEnter = lblEditCondNotesMouseEnter
       OnMouseLeave = lblEditCondNotesMouseLeave
+    end
+    object shpFlagged: TShape
+      Left = 4
+      Top = 0
+      Width = 17
+      Height = 33
+      Hint = 'Flagged'
+      Brush.Color = 16717776
+      ParentShowHint = False
+      Pen.Style = psClear
+      Shape = stRoundSquare
+      ShowHint = True
     end
     object meNotes: TMemo
       Left = 0
@@ -273,7 +285,6 @@ object frmProjectFrame: TfrmProjectFrame
       Width = 217
       Height = 25
       Caption = 'Dependency tree...'
-      Enabled = False
       TabOrder = 10
       OnClick = btnDepTreeClick
     end

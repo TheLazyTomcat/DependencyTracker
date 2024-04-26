@@ -12,20 +12,28 @@ unit DepsTracker_Manager;
 interface
 
 uses
+  Classes,
   AuxClasses,
   DepsTracker_Common, DepsTracker_Project;
-{$message 'add project Flagged'}
+
 {===============================================================================
 --------------------------------------------------------------------------------
                                    TDTManager
 --------------------------------------------------------------------------------
 ===============================================================================}
+type
+  TDTPRojectTemplateSettings = record
+    RepositoryURL:    String;
+    ProjectDirectory: String;
+  end;
+
 {===============================================================================
     TDTManager - class declaration
 ===============================================================================}
 type
   TDTManager = class(TCustomListObject)
   protected
+    fPrjTemplate:   TDTPRojectTemplateSettings;
     fProjects:      array of TDTProject;
     fProjectCount:  Integer;
     Function GetProject(Index: Integer): TDTProject; virtual;
@@ -39,7 +47,12 @@ type
     Function ProjectsCompare(A,B: Integer): Integer; overload; virtual;
     procedure ProjectsExchange(A,B: Integer); virtual;
     procedure ReIndex; virtual;
+    // vrsioned IO
+    procedure SaveToStream_0001(Stream: TStream); virtual;
+    procedure LoadFromStream_0000(Stream: TStream); virtual;
+    procedure LoadFromStream_0001(Stream: TStream); virtual;
   public
+    class Function DefaultFileName: String; virtual;
     constructor Create;
     destructor Destroy; override;
     Function LowIndex: Integer; override;
@@ -58,13 +71,14 @@ type
     procedure Sort; virtual;
     procedure SaveToFile(const FileName: String); virtual;
     procedure LoadFromFile(const FileName: String); virtual;
+    property ProjectTemplate: TDTPRojectTemplateSettings read fPrjTemplate write fPrjTemplate;
     property Projects[Index: Integer]: TDTProject read GetProject; default;
   end;
 
 implementation
 
 uses
-  Classes, StrUtils,
+  StrUtils,
   AuxTypes, StrRect, ListSorters, BinaryStreamingLite;
 
 {===============================================================================
@@ -74,7 +88,9 @@ uses
 ===============================================================================}
 const
   DT_FILE_SIGNATURE = UInt32($0105090D);
+
   DT_FILE_VERSION_0 = UInt32(0);
+  DT_FILE_VERSION_1 = UInt32(1);
 
 {===============================================================================
     TDTManager - class implementation
@@ -188,9 +204,121 @@ For i := LowIndex to HighIndex do
   fProjects[i].Index := i;
 end;
 
+//------------------------------------------------------------------------------
+
+procedure TDTManager.SaveToStream_0001(Stream: TStream);
+var
+  i,j:  Integer;
+begin
+Stream_WriteUInt32(Stream,DT_FILE_VERSION_1);
+Stream_WriteString(Stream,fPrjTemplate.RepositoryURL);
+Stream_WriteString(Stream,fPrjTemplate.ProjectDirectory);
+Stream_WriteInt32(Stream,fProjectCount);
+// save projects
+For i := LowIndex to HighIndex do
+  fProjects[i].SaveToStream(Stream);
+// save dependency lists (indices)
+For i := LowIndex to HighIndex do
+  begin
+    Stream_WriteInt32(Stream,fProjects[i].DependenciesCount);
+    For j := fProjects[i].DependenciesLowIndex to fProjects[i].DependenciesHighIndex do
+      begin
+        Stream_WriteInt32(Stream,fProjects[i][j].Index);
+        Stream_WriteBoolean(Stream,fProjects[i].DependenciesInfo[j].Conditional);
+        Stream_WriteString(Stream,fProjects[i].DependenciesInfo[j].ConditionNotes);
+      end;
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TDTManager.LoadFromStream_0000(Stream: TStream);
+var
+  i,j:  Integer;
+  Idx:  Integer;
+begin
+// load projects
+fProjectCount := Stream_GetInt32(Stream);
+SetCapacity(fProjectCount);
+For i := LowIndex to HighIndex do
+  begin
+    fProjects[i] := TDTProject.Create(Stream);
+    // lock all projects to prevent update storm when loading dependencies
+    fProjects[i].BeginInterlockedOperations;
+  end;
+ReIndex;
+try
+  // load dependecies for projects
+  For i := LowIndex to HighIndex do
+    For j := 0 to Pred(Stream_GetInt32(Stream)) do
+      begin
+        Idx := fProjects[i].DependenciesAdd(GetProject(Stream_GetInt32(Stream)));
+        fProjects[i].DependenciesInfoPtr[Idx]^.Conditional := Stream_GetBoolean(Stream);
+        fProjects[i].DependenciesInfoPtr[Idx]^.ConditionNotes := Stream_GetString(Stream);
+      end;
+finally
+  For i := LowIndex to HighIndex do
+    fProjects[i].EndInterlockedOperations;
+end;
+// resolve indirect dependencies and dependents
+For i := LowIndex to HighIndex do
+  begin
+    fProjects[i].EnumerateIndirectDependencies;
+    fProjects[i].EnumerateIndirectDependents;
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TDTManager.LoadFromStream_0001(Stream: TStream);
+var
+  i,j:  Integer;
+  Idx:  Integer;
+begin
+// load template settings
+fPrjTemplate.RepositoryURL := Stream_GetString(Stream);
+fPrjTemplate.ProjectDirectory := Stream_getString(Stream);
+// load projects
+fProjectCount := Stream_GetInt32(Stream);
+SetCapacity(fProjectCount);
+For i := LowIndex to HighIndex do
+  begin
+    fProjects[i] := TDTProject.Create(Stream);
+    // lock all projects to prevent update storm when loading dependencies
+    fProjects[i].BeginInterlockedOperations;
+  end;
+ReIndex;
+try
+  // load dependecies for projects
+  For i := LowIndex to HighIndex do
+    For j := 0 to Pred(Stream_GetInt32(Stream)) do
+      begin
+        Idx := fProjects[i].DependenciesAdd(GetProject(Stream_GetInt32(Stream)));
+        fProjects[i].DependenciesInfoPtr[Idx]^.Conditional := Stream_GetBoolean(Stream);
+        fProjects[i].DependenciesInfoPtr[Idx]^.ConditionNotes := Stream_GetString(Stream);
+      end;
+finally
+  For i := LowIndex to HighIndex do
+    fProjects[i].EndInterlockedOperations;
+end;
+// resolve indirect dependencies and dependents
+For i := LowIndex to HighIndex do
+  begin
+    fProjects[i].EnumerateIndirectDependencies;
+    fProjects[i].EnumerateIndirectDependents;
+  end;
+end;
+
 {-------------------------------------------------------------------------------
     TDTManager - public methods
 -------------------------------------------------------------------------------}
+
+class Function TDTManager.DefaultFileName: String;
+begin
+Result := 'deps.trc';
+end;
+
+//------------------------------------------------------------------------------
 
 constructor TDTManager.Create;
 begin
@@ -416,29 +544,13 @@ end;
 procedure TDTManager.SaveToFile(const FileName: String);
 var
   Stream: TMemoryStream;
-  i,j:    Integer;
 begin
 ReIndex;  // just to be sure
 Stream := TMemoryStream.Create;
 try
   Stream.Seek(0,soBeginning);
   Stream_WriteUInt32(Stream,DT_FILE_SIGNATURE);
-  Stream_WriteUInt32(Stream,DT_FILE_VERSION_0);
-  Stream_WriteInt32(Stream,fProjectCount);
-  // save projects
-  For i := LowIndex to HighIndex do
-    fProjects[i].SaveToStream(Stream);
-  // save dependency lists (indices)
-  For i := LowIndex to HighIndex do
-    begin
-      Stream_WriteInt32(Stream,fProjects[i].DependenciesCount);
-      For j := fProjects[i].DependenciesLowIndex to fProjects[i].DependenciesHighIndex do
-        begin
-          Stream_WriteInt32(Stream,fProjects[i][j].Index);
-          Stream_WriteBoolean(Stream,fProjects[i].DependenciesInfo[j].Conditional);
-          Stream_WriteString(Stream,fProjects[i].DependenciesInfo[j].ConditionNotes);
-        end;
-    end;
+  SaveToStream_0001(Stream);
   Stream.SaveToFile(StrToRTL(FileName));
 finally
   Stream.Free;
@@ -450,8 +562,6 @@ end;
 procedure TDTManager.LoadFromFile(const FileName: String);
 var
   Stream: TMemoryStream;
-  i,j:    Integer;
-  Idx:    Integer;
 begin
 Clear;
 Stream := TMemoryStream.Create;
@@ -460,37 +570,12 @@ try
   Stream.Seek(0,soBeginning);
   If Stream_GetUint32(Stream) <> DT_FILE_SIGNATURE then
     raise EDTInvalidFile.Create('TDTManager.LoadFromFile: Invalid file signature.');
-  If Stream_GetUint32(Stream) <> DT_FILE_VERSION_0 then
+  case Stream_GetUint32(Stream) of
+    DT_FILE_VERSION_0:  LoadFromStream_0000(Stream);
+    DT_FILE_VERSION_1:  LoadFromStream_0001(Stream);
+  else
     raise EDTInvalidFile.Create('TDTManager.LoadFromFile: Invalid file version.');
-  // load projects
-  fProjectCount := Stream_GetInt32(Stream);
-  SetCapacity(fProjectCount);
-  For i := LowIndex to HighIndex do
-    begin
-      fProjects[i] := TDTProject.Create(Stream);
-      // lock all projects to prevent update storm when loading dependencies
-      fProjects[i].BeginInterlockedOperations;
-    end;
-  ReIndex;  
-  try
-    // load dependecies for projects
-    For i := LowIndex to HighIndex do
-      For j := 0 to Pred(Stream_GetInt32(Stream)) do
-        begin
-          Idx := fProjects[i].DependenciesAdd(GetProject(Stream_GetInt32(Stream)));
-          fProjects[i].DependenciesInfoPtr[Idx]^.Conditional := Stream_GetBoolean(Stream);
-          fProjects[i].DependenciesInfoPtr[Idx]^.ConditionNotes := Stream_GetString(Stream);
-        end;
-  finally
-    For i := LowIndex to HighIndex do
-      fProjects[i].EndInterlockedOperations;
   end;
-  // resolve indirect dependencies and dependents
-  For i := LowIndex to HighIndex do
-    begin
-      fProjects[i].EnumerateIndirectDependencies;
-      fProjects[i].EnumerateIndirectDependents;
-    end;
 finally
   Stream.Free;
 end;

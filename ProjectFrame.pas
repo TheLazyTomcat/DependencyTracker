@@ -17,7 +17,8 @@ uses
 type
   TfrmProjectFrame = class(TFrame)
     pnlBackgroundPanel: TPanel;
-    shrNameBackground: TShape;
+    shpNameBackground: TShape;
+    shpFlagged: TShape;    
     lblName: TLabel;
     lblType: TLabel;
     cbType: TComboBox;
@@ -89,6 +90,7 @@ type
     procedure LoadFrame;
     procedure SaveFrame;
     procedure UpdateLists;
+    procedure UpdateFlagged;
     procedure SetItem(Project: TDTProject);
   end;
 
@@ -250,6 +252,7 @@ If Assigned(fProject) then
   begin
     fLoadingFrame := True;
     try
+      UpdateFlagged;
       lblName.Caption := fProject.Name;
       cbType.ItemIndex := Ord(fProject.ProjectType);
       leRepositoryURL.Text := fProject.RepositoryURL;
@@ -283,34 +286,45 @@ var
   IndirDpdsIdx: Integer;
   Index:        Integer;
 begin
-IndirDepsIdx := lbIndirectDeps.ItemIndex;
-IndirDpdsIdx := lbDependents.ItemIndex;
-LoadDependenciesList;
-LoadIndirectDependenciesList;
-LoadDependentsList;
-If fProject.DependenciesFind(fSelDependency,Index) then
+If Assigned(fProject) then
   begin
-    lbDependencies.ItemIndex := Index;
-    fSelDepIndex := Index;
-  end
-else
-  begin
-    fSelDependency := nil;
-    fSelDepIndex := -1;
-    If lbDependencies.Count > 0 then
-      lbDependencies.ItemIndex := 0
+    IndirDepsIdx := lbIndirectDeps.ItemIndex;
+    IndirDpdsIdx := lbDependents.ItemIndex;
+    LoadDependenciesList;
+    LoadIndirectDependenciesList;
+    LoadDependentsList;
+    If fProject.DependenciesFind(fSelDependency,Index) then
+      begin
+        lbDependencies.ItemIndex := Index;
+        fSelDepIndex := Index;
+      end
     else
-      lbDependencies.ItemIndex := -1;
-    lbDependencies.OnClick(Self);
+      begin
+        fSelDependency := nil;
+        fSelDepIndex := -1;
+        If lbDependencies.Count > 0 then
+          lbDependencies.ItemIndex := 0
+        else
+          lbDependencies.ItemIndex := -1;
+        lbDependencies.OnClick(Self);
+      end;
+    If lbIndirectDeps.Count <= 0 then
+      lbIndirectDeps.ItemIndex := -1
+    else If IndirDepsIdx >= lbIndirectDeps.Count then
+      lbIndirectDeps.ItemIndex := Pred(lbIndirectDeps.Count);
+    If lbDependents.Count <= 0 then
+      lbDependents.ItemIndex := -1
+    else If IndirDpdsIdx >= lbDependents.Count then
+      lbDependents.ItemIndex := Pred(lbDependents.Count);
   end;
-If lbIndirectDeps.Count <= 0 then
-  lbIndirectDeps.ItemIndex := -1
-else If IndirDepsIdx >= lbIndirectDeps.Count then
-  lbIndirectDeps.ItemIndex := Pred(lbIndirectDeps.Count);
-If lbDependents.Count <= 0 then
-  lbDependents.ItemIndex := -1
-else If IndirDpdsIdx >= lbDependents.Count then
-  lbDependents.ItemIndex := Pred(lbDependents.Count);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TfrmProjectFrame.UpdateFlagged;
+begin
+If Assigned(fProject) then
+  shpFlagged.Visible := fProject.Flagged;
 end;
 
 //------------------------------------------------------------------------------
@@ -564,6 +578,8 @@ begin
 with fProject.CreateDependencyReport do
 try
   Report := Text;
+  If AnsiEndsText(sLineBreak,Report) then
+    Report := Copy(Report,1,Length(Report) - Length(sLineBreak));
   fTextEditForm.ShowTextEditor(Format('%s - dependency report',[fProject.Name]),Report,False);
 finally
   Free;
@@ -573,8 +589,18 @@ end;
 //------------------------------------------------------------------------------
 
 procedure TfrmProjectFrame.btnDepTreeClick(Sender: TObject);
+var
+  Tree: String;
 begin
-//
+with fProject.CreateDependencyTree do
+try
+  Tree := Text;
+  If AnsiEndsText(sLineBreak,Tree) then
+    Tree := Copy(Tree,1,Length(Tree) - Length(sLineBreak));
+  fTextEditForm.ShowTextEditor(Format('%s - dependency tree',[fProject.Name]),Tree,False);
+finally
+  Free;
+end;
 end;
 
 //------------------------------------------------------------------------------

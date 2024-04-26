@@ -11,8 +11,8 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, XPMan, Menus, ProjectFrame, ComCtrls,
-  DepsTracker_Project, DepsTracker_Manager, ActnList;
+  Dialogs, StdCtrls, XPMan, Menus, ProjectFrame, ComCtrls, ActnList,
+  DepsTracker_Project, DepsTracker_Manager;
 
 type
   TfMainForm = class(TForm)
@@ -23,13 +23,20 @@ type
     pmiProjects_Remove: TMenuItem;
     pmiProjects_RemoveAll: TMenuItem;
     N1: TMenuItem;
+    pmiProjects_AddTemplate: TMenuItem;
+    pmiProjects_TemplateSettings: TMenuItem;
+    N2: TMenuItem;
     pmiProjects_List: TMenuItem;
     pmiProjects_FullNames: TMenuItem;
     pmiProjects_List_Comma: TMenuItem;
     pmiProjects_List_Line: TMenuItem;
-    N2: TMenuItem;
-    pmiProjects_Save: TMenuItem;
     N3: TMenuItem;
+    pmiProjects_FlagAll: TMenuItem;
+    pmiProjects_UnflagAll: TMenuItem;
+    pmiProjects_FlagToggle: TMenuItem;    
+    N4: TMenuItem;
+    pmiProjects_Save: TMenuItem;
+    N5: TMenuItem;
     pmiProjects_ExitNS: TMenuItem;
     pmiProjects_Exit: TMenuItem;
     eSearchFor: TEdit;
@@ -49,14 +56,20 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure lbProjectsClick(Sender: TObject);
+    procedure lbProjectsDblClick(Sender: TObject);
     procedure lbProjectsMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure pmProjectsPopup(Sender: TObject);
     procedure pmiProjects_AddClick(Sender: TObject);
     procedure pmiProjects_RemoveClick(Sender: TObject);
     procedure pmiProjects_RemoveAllClick(Sender: TObject);
+    procedure pmiProjects_AddTemplateClick(Sender: TObject);
+    procedure pmiProjects_TemplateSettingsClick(Sender: TObject);
     procedure pmiProjects_List_CommaClick(Sender: TObject);
     procedure pmiProjects_List_LineClick(Sender: TObject);
+    procedure pmiProjects_FlagAllClick(Sender: TObject);
+    procedure pmiProjects_UnflagAllClick(Sender: TObject);
+    procedure pmiProjects_FlagToggleClick(Sender: TObject);
     procedure pmiProjects_SaveClick(Sender: TObject);
     procedure pmiProjects_ExitNSClick(Sender: TObject);
     procedure pmiProjects_ExitClick(Sender: TObject);
@@ -91,7 +104,8 @@ var
 implementation
 
 uses
-  ProjectNameForm, TextEditForm;
+  WinFileInfo,
+  ProjectNameForm, TextEditForm, TemplateSettingsForm;
 
 {$R *.dfm}
 
@@ -139,11 +153,24 @@ end;
 
 procedure TfMainForm.FormCreate(Sender: TObject);
 begin
+with TWinFileInfo.Create([lsaLoadVersionInfo,lsaLoadFixedFileInfo,lsaDecodeFixedFileInfo]) do
+try
+  sbStatusBar.Panels[2].Text := Format('%s, version %d.%d.%d %s%s #%d %s',[
+    VersionInfoValues[VersionInfoTranslations[0].LanguageStr,'LegalCopyright'],
+    VersionInfoFixedFileInfoDecoded.FileVersionMembers.Major,
+    VersionInfoFixedFileInfoDecoded.FileVersionMembers.Minor,
+    VersionInfoFixedFileInfoDecoded.FileVersionMembers.Release,
+    {$IFDEF FPC}'L'{$ELSE}'D'{$ENDIF},{$IFDEF x64}'64'{$ELSE}'32'{$ENDIF},
+    VersionInfoFixedFileInfoDecoded.FileVersionMembers.Build,
+    {$IFDEF Debug}'debug'{$ELSE}'release'{$ENDIF}]);
+finally
+  Free;
+end;
 frmProjectFrame.Initialize;
 frmProjectFrame.OnListChange := ListChangeHandler;
 frmProjectFrame.OnListSelect := ListSelectHandler;
 fSaveOnClose := True;
-fMainFile := ExtractFilePath(ParamStr(0)) + 'depstrack.dat';
+fMainFile := ExtractFilePath(ParamStr(0)) + TDTManager.DefaultFileName;
 sbStatusBar.Panels[1].Text := fMainFile;
 Manager := TDTManager.Create;
 If FileExists(fMainFile) then
@@ -185,6 +212,19 @@ end;
 
 //------------------------------------------------------------------------------
 
+procedure TfMainForm.lbProjectsDblClick(Sender: TObject);
+begin
+If lbProjects.ItemIndex >= 0 then
+  begin
+    Manager[lbProjects.ItemIndex].Flagged := not Manager[lbProjects.ItemIndex].Flagged;
+    lbProjects.Items[lbProjects.ItemIndex] := Manager[lbProjects.ItemIndex].FullName;
+    frmProjectFrame.UpdateFlagged;
+  end;
+end;
+
+
+//------------------------------------------------------------------------------
+
 procedure TfMainForm.lbProjectsMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   Index:  Integer;
@@ -206,6 +246,9 @@ procedure TfMainForm.pmProjectsPopup(Sender: TObject);
 begin
 pmiProjects_Remove.Enabled := lbProjects.ItemIndex >= 0;
 pmiProjects_RemoveAll.Enabled := Manager.Count > 0;
+pmiProjects_FlagAll.Enabled := pmiProjects_RemoveAll.Enabled;
+pmiProjects_UnflagAll.Enabled := pmiProjects_RemoveAll.Enabled;
+pmiProjects_FlagToggle.Enabled := pmiProjects_RemoveAll.Enabled;
 end;
 
 //------------------------------------------------------------------------------
@@ -263,6 +306,31 @@ end;
 
 //------------------------------------------------------------------------------
 
+procedure TfMainForm.pmiProjects_AddTemplateClick(Sender: TObject);
+var
+  Name:   String;
+  Index:  Integer;
+begin
+Name := '';
+If fProjectNameForm.Prompt('New project',Name) then
+  begin
+    Index := Manager.Add(Name);
+    Manager[Index].RepositoryURL := Format(Manager.ProjectTemplate.RepositoryURL,[Name]);
+    Manager[Index].ProjectDirector := Format(Manager.ProjectTemplate.ProjectDirectory,[Name]);
+    UpdateProjects;
+    lbProjects.ItemIndex := Index;
+    lbProjects.OnClick(Self);
+  end;
+end;
+//------------------------------------------------------------------------------
+
+procedure TfMainForm.pmiProjects_TemplateSettingsClick(Sender: TObject);
+begin
+fTemplateSettingsForm.ShowModal;
+end;
+
+//------------------------------------------------------------------------------
+
 procedure TfMainForm.pmiProjects_List_CommaClick(Sender: TObject);
 var
   FullName: Boolean;
@@ -303,6 +371,42 @@ For i := Manager.LowIndex to Manager.HighIndex do
       Text := Text + Manager[i].Name;
   end;
 fTextEditForm.ShowTextReadOnly('Projects',Text,False);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TfMainForm.pmiProjects_FlagAllClick(Sender: TObject);
+var
+  i:  Integer;
+begin
+For i := Manager.LowIndex to Manager.HighIndex do
+  Manager[i].Flagged := True;
+UpdateProjects;
+frmProjectFrame.UpdateFlagged;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TfMainForm.pmiProjects_UnflagAllClick(Sender: TObject);
+var
+  i:  Integer;
+begin
+For i := Manager.LowIndex to Manager.HighIndex do
+  Manager[i].Flagged := False;
+UpdateProjects;
+frmProjectFrame.UpdateFlagged;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TfMainForm.pmiProjects_FlagToggleClick(Sender: TObject);
+var
+  i:  Integer;
+begin
+For i := Manager.LowIndex to Manager.HighIndex do
+  Manager[i].Flagged := not Manager[i].Flagged;
+UpdateProjects;
+frmProjectFrame.UpdateFlagged;
 end;
 
 //------------------------------------------------------------------------------
