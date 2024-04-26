@@ -106,12 +106,12 @@ Launcher=
 UseLauncher=0
 DebugCWD=
 [Version Info]
-IncludeVerInfo=0
-AutoIncBuild=0
+IncludeVerInfo=1
+AutoIncBuild=1
 MajorVer=1
 MinorVer=0
 Release=0
-Build=0
+Build=12
 Debug=0
 PreRelease=0
 Special=0
@@ -120,16 +120,16 @@ DLL=0
 Locale=1029
 CodePage=1250
 [Version Info Keys]
-CompanyName=
-FileDescription=
-FileVersion=1.0.0.0
-InternalName=
-LegalCopyright=
-LegalTrademarks=
-OriginalFilename=
-ProductName=
+CompanyName=František Milt
+FileDescription=Dependency Tracker application
+FileVersion=1.0.0.12
+InternalName=Dependency Tracker
+LegalCopyright=©2024 František Milt
+LegalTrademarks=Dependency Tracker
+OriginalFilename=DependencyTracker.exe
+ProductName=Dependency Tracker
 ProductVersion=1.0.0.0
-Comments=
+Comments=Utility for units/projects dependecy tracking
 [HistoryLists\hlUnitAliases]
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;

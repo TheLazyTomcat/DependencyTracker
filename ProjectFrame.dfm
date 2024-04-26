@@ -28,14 +28,14 @@ object frmProjectFrame: TfrmProjectFrame
     end
     object lblNotes: TLabel
       Left = 0
-      Top = 80
+      Top = 120
       Width = 32
       Height = 13
       Caption = 'Notes:'
     end
     object lblEditNotes: TLabel
       Left = 646
-      Top = 75
+      Top = 115
       Width = 16
       Height = 19
       Hint = 'Open editor...'
@@ -54,28 +54,28 @@ object frmProjectFrame: TfrmProjectFrame
     end
     object lblDependents: TLabel
       Left = 448
-      Top = 328
+      Top = 368
       Width = 108
       Height = 13
       Caption = 'Dependents (indirect):'
     end
     object lblIndirectDeps: TLabel
       Left = 224
-      Top = 328
+      Top = 368
       Width = 110
       Height = 13
       Caption = 'Indirect dependencies:'
     end
     object lblDependencies: TLabel
       Left = 0
-      Top = 208
+      Top = 248
       Width = 71
       Height = 13
       Caption = 'Dependencies:'
     end
     object bvlSplitter: TBevel
       Left = 224
-      Top = 314
+      Top = 354
       Width = 440
       Height = 9
       Shape = bsBottomLine
@@ -88,9 +88,9 @@ object frmProjectFrame: TfrmProjectFrame
       Pen.Style = psClear
     end
     object lblName: TLabel
-      Left = 8
+      Left = 16
       Top = 0
-      Width = 648
+      Width = 633
       Height = 33
       Alignment = taCenter
       AutoSize = False
@@ -107,7 +107,7 @@ object frmProjectFrame: TfrmProjectFrame
     end
     object lblEditCondNotes: TLabel
       Left = 648
-      Top = 202
+      Top = 242
       Width = 16
       Height = 19
       Hint = 'Open editor...'
@@ -126,7 +126,7 @@ object frmProjectFrame: TfrmProjectFrame
     end
     object meNotes: TMemo
       Left = 0
-      Top = 96
+      Top = 136
       Width = 664
       Height = 105
       Font.Charset = DEFAULT_CHARSET
@@ -136,12 +136,13 @@ object frmProjectFrame: TfrmProjectFrame
       Font.Style = []
       ParentFont = False
       ScrollBars = ssBoth
-      TabOrder = 3
+      TabOrder = 6
       WordWrap = False
+      OnKeyPress = meNotesKeyPress
     end
     object meConditionNotes: TMemo
       Left = 224
-      Top = 224
+      Top = 264
       Width = 440
       Height = 89
       Font.Charset = DEFAULT_CHARSET
@@ -151,14 +152,16 @@ object frmProjectFrame: TfrmProjectFrame
       Font.Style = []
       ParentFont = False
       ScrollBars = ssBoth
-      TabOrder = 9
+      TabOrder = 12
       WordWrap = False
+      OnKeyPress = meConditionNotesKeyPress
     end
     object lbDependents: TListBox
+      Tag = 3
       Left = 448
-      Top = 344
+      Top = 384
       Width = 216
-      Height = 242
+      Height = 200
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
       Font.Height = -11
@@ -168,13 +171,15 @@ object frmProjectFrame: TfrmProjectFrame
       ItemHeight = 14
       ParentFont = False
       PopupMenu = pmListing
-      TabOrder = 11
+      TabOrder = 14
+      OnDblClick = lbDependentsDblClick
     end
     object lbIndirectDeps: TListBox
+      Tag = 2
       Left = 224
-      Top = 344
+      Top = 384
       Width = 217
-      Height = 242
+      Height = 200
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
       Font.Height = -11
@@ -184,13 +189,15 @@ object frmProjectFrame: TfrmProjectFrame
       ItemHeight = 14
       ParentFont = False
       PopupMenu = pmListing
-      TabOrder = 10
+      TabOrder = 13
+      OnDblClick = lbIndirectDepsDblClick
     end
     object lbDependencies: TListBox
+      Tag = 1
       Left = 0
-      Top = 224
+      Top = 264
       Width = 217
-      Height = 270
+      Height = 228
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
       Font.Height = -11
@@ -200,14 +207,14 @@ object frmProjectFrame: TfrmProjectFrame
       ItemHeight = 14
       ParentFont = False
       PopupMenu = pmListing
-      TabOrder = 4
+      TabOrder = 7
       OnClick = lbDependenciesClick
       OnDblClick = lbDependenciesDblClick
     end
     object leRepositoryURL: TLabeledEdit
       Left = 184
       Top = 56
-      Width = 455
+      Width = 454
       Height = 21
       EditLabel.Width = 78
       EditLabel.Height = 13
@@ -216,11 +223,11 @@ object frmProjectFrame: TfrmProjectFrame
     end
     object cbConditionDep: TCheckBox
       Left = 224
-      Top = 206
+      Top = 246
       Width = 137
       Height = 17
       Caption = 'Conditional dependency'
-      TabOrder = 8
+      TabOrder = 11
       OnClick = cbConditionDepClick
     end
     object cbType: TComboBox
@@ -248,7 +255,7 @@ object frmProjectFrame: TfrmProjectFrame
       Width = 217
       Height = 25
       Caption = 'Manage dependencies...'
-      TabOrder = 5
+      TabOrder = 8
       OnClick = btnManageDepsClick
     end
     object btnDepReport: TButton
@@ -257,8 +264,8 @@ object frmProjectFrame: TfrmProjectFrame
       Width = 217
       Height = 25
       Caption = 'Dependency report...'
-      Enabled = False
-      TabOrder = 6
+      TabOrder = 9
+      OnClick = btnDepReportClick
     end
     object btnDepTree: TButton
       Left = 0
@@ -267,21 +274,50 @@ object frmProjectFrame: TfrmProjectFrame
       Height = 25
       Caption = 'Dependency tree...'
       Enabled = False
-      TabOrder = 7
+      TabOrder = 10
+      OnClick = btnDepTreeClick
+    end
+    object leProjectDir: TLabeledEdit
+      Left = 0
+      Top = 96
+      Width = 613
+      Height = 21
+      EditLabel.Width = 84
+      EditLabel.Height = 13
+      EditLabel.Caption = 'Project directory:'
+      TabOrder = 3
+    end
+    object btnBrowseProjectDir: TButton
+      Left = 614
+      Top = 96
+      Width = 25
+      Height = 21
+      Caption = '...'
+      TabOrder = 4
+      OnClick = btnBrowseProjectDirClick
+    end
+    object btnOpenProjectDir: TButton
+      Left = 639
+      Top = 96
+      Width = 25
+      Height = 21
+      Caption = '>'
+      TabOrder = 5
+      OnClick = btnOpenProjectDirClick
     end
   end
   object pmListing: TPopupMenu
-    Left = 192
-    Top = 200
+    Left = 184
+    Top = 248
     object pmiListing: TMenuItem
       Caption = 'Create listing'
       object pmiListing_Comma: TMenuItem
         Caption = 'Comma separated...'
-        OnClick = pmiListing_CommaClick
+        OnClick = pmiListing_CommonClick
       end
       object pmiListing_Line: TMenuItem
         Caption = 'Line separated...'
-        OnClick = pmiListing_LineClick
+        OnClick = pmiListing_CommonClick
       end
     end
   end

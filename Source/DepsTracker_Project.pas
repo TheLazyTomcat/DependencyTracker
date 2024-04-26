@@ -1,3 +1,10 @@
+{-------------------------------------------------------------------------------
+
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-------------------------------------------------------------------------------}
 unit DepsTracker_Project;
 
 {$INCLUDE '.\DepsTracker_defs.inc'}
@@ -49,6 +56,7 @@ type
     fRepositoryURL:           String;
     fProjectDir:              String;
     fNotes:                   String;
+    fFlagged:                 Boolean;
     // lists
     fDependencies:            array of TDTDependencyInfo;
     fDependenciesCount:       Integer;
@@ -135,6 +143,8 @@ type
     Function FullName: String; virtual;
     // I/O
     procedure SaveToStream(Stream: TStream); virtual;
+    // reports
+    Function CreateDependencyReport: TStrings; virtual;
     // properties
     property Index: Integer read fIndex write fIndex;
     property Name: String read fName write SetName;
@@ -142,6 +152,7 @@ type
     property RepositoryURL: String read fRepositoryURL write fRepositoryURL;
     property ProjectDirector: String read fProjectDir write fProjectDir;
     property Notes: String read fNotes write fNotes;
+    property Flagged: Boolean read fFlagged write fFlagged;
     property DependenciesCount: Integer index DT_PROJLIST_DEPENDENCIES read GetCount;
     property DependenciesInfoPtr[Index: Integer]: PDTDependencyInfo read GetDependencyInfoPtr;
     property DependenciesInfo[Index: Integer]: TDTDependencyInfo read GetDependencyInfo; 
@@ -710,6 +721,7 @@ fProjectType := ptOthers;
 fRepositoryURL := '';
 fProjectDir := '';
 fNotes := '';
+fFlagged := False;
 fDependencies := nil;
 fDependenciesCount := 0;
 fDependents := nil;
@@ -743,6 +755,7 @@ fProjectType := NumToProjectType(Stream_GetUInt8(Stream));
 fRepositoryURL := Stream_GetString(Stream);
 fProjectDir := Stream_GetString(Stream);
 fNotes := Stream_GetString(Stream);
+fFlagged := Stream_GetBoolean(Stream);
 end;
 
 {-------------------------------------------------------------------------------
@@ -1102,6 +1115,141 @@ Stream_WriteUInt8(Stream,ProjectTypeToNum(fProjectType));
 Stream_WriteString(Stream,fRepositoryURL);
 Stream_WriteString(Stream,fProjectDir);
 Stream_WriteString(Stream,fNotes);
+Stream_WriteBoolean(Stream,fFlagged);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TDTProject.CreateDependencyReport: TStrings;
+
+  Function CondPrefix(Conditional: Boolean): String;
+  begin
+    If Conditional then
+      Result := '  * '
+    else
+      Result := '    ';
+  end;
+
+  procedure WordWrapAdd(Strs: TStrings; const Text: String);
+  var
+    i,SpcPos: Integer;
+  begin
+    If Length(Text) > 78 then
+      begin
+        SpcPos := 0;
+        For i := 78 downto 1 do
+          If Text[i] = ' ' then
+            begin
+              SpcPos := i;
+              Break{For i};
+            end;
+        If SpcPos <= 0 then
+          For i := 79 to Length(Text) do
+            If Text[i] = ' ' then
+              begin
+                SpcPos := i;
+                Break{For i};
+              end;
+        If SpcPos > 0 then
+          begin
+            Strs.Add('  ' + Copy(Text,1,SpcPos - 1));
+            WordWrapAdd(Strs,Copy(Text,SpcPos + 1,Length(Text)));
+          end
+        else Strs.Add('  ' + Text);
+      end
+    else Strs.Add('  ' + Text);
+  end;
+
+var
+  i:        Integer;
+  MaxW:     Integer;
+  TempList: TStringList;
+  TempText: String;
+begin
+{
+  NOTE - this has wery specific formatting and as such probably will not be of
+         any use for users other than the author.
+}
+Result := TStringList.Create;
+// direct dependecies...
+Result.Add('  Dependencies:');
+If DependenciesCount > 0 then
+  begin
+    // list direct dependecies
+    MaxW := 0;
+    For i := DependenciesLowIndex to DependenciesHighIndex do
+      If Length(Dependencies[i].Name) > MaxW then
+        MaxW := Length(Dependencies[i].Name);
+    For i := DependenciesLowIndex to DependenciesHighIndex do
+      begin
+        If Length(Dependencies[i].RepositoryURL) > 0 then
+          Result.Add(CondPrefix(fDependencies[i].Conditional) + Dependencies[i].Name +
+                     StringOfChar(' ',MaxW - Length(Dependencies[i].Name)) +
+                     ' - ' + Dependencies[i].RepositoryURL)
+        else
+          Result.Add(CondPrefix(fDependencies[i].Conditional) + Dependencies[i].Name);
+      end;
+    // direct dependencies contition notes
+    For i := DependenciesLowIndex to DependenciesHighIndex do
+      If fDependencies[i].Conditional and (Length(fDependencies[i].ConditionNotes) > 0) then
+        begin
+          Result.Add(''); // an empty line
+          WordWrapAdd(Result,fDependencies[i].ConditionNotes);
+        end;
+    // notes on conditional deps. that are also in indirect deps.
+    TempList := TStringList.Create;
+    try
+      For i := DependenciesLowIndex to DependenciesHighIndex do
+        If fDependencies[i].Conditional and fDependencies[i].IsAlsoIndirect then
+          TempList.Add(Dependencies[i].Name);
+      If TempList.Count > 0 then
+        begin
+          Result.Add('');
+          If TempList.Count > 2 then
+            begin
+              TempText := '';
+              For i := 0 to Pred(TempList.Count) do
+                If Length(TempText) > 0 then
+                  begin
+                    If i < Pred(TempList.Count) then
+                      TempText := TempText + ', '
+                    else
+                      TempText := TempText + ' and ';
+                    TempText := TempText + TempList[i];
+                  end
+                else TempText := TempList[i];
+              WordWrapAdd(Result,Format('Libraries %s might also be required as an indirect dependencies.',[TempText]));
+            end
+          else If TempList.Count > 1 then
+            WordWrapAdd(Result,Format('Libraries %s and %s might also be required as an indirect dependencies.',[TempList[0],TempList[1]]))
+          else
+            WordWrapAdd(Result,Format('Library %s might also be required as an indirect dependency.',[TempList[0]]));
+        end;
+    finally
+      TempList.Free;
+    end;
+    // indirect dependecies...
+    If IndirectDependenciesCount > 0 then
+      begin
+        Result.Add('');
+        Result.Add('  Indirect dependencies:');
+        // list indirect dependecies
+        MaxW := 0;
+        For i := IndirectDependenciesLowIndex to IndirectDependenciesHighIndex do
+          If Length(fIndirDependencies[i].Name) > MaxW then
+            MaxW := Length(fIndirDependencies[i].Name);
+        For i := IndirectDependenciesLowIndex to IndirectDependenciesHighIndex do
+          begin
+            If Length(fIndirDependencies[i].RepositoryURL) > 0 then
+              Result.Add('    ' + fIndirDependencies[i].Name +
+                         StringOfChar(' ',MaxW - Length(fIndirDependencies[i].Name)) +
+                         ' - ' + fIndirDependencies[i].RepositoryURL)
+            else
+              Result.Add('    ' + fIndirDependencies[i].Name);
+          end;
+      end;
+  end
+else Result.Add('    none')
 end;
 
 end.

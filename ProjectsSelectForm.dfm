@@ -1,4 +1,4 @@
-object fProjectsSelect: TfProjectsSelect
+object fProjectsSelectForm: TfProjectsSelectForm
   Left = 1010
   Top = 375
   BorderStyle = bsDialog

@@ -1,3 +1,10 @@
+{-------------------------------------------------------------------------------
+
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-------------------------------------------------------------------------------}
 program DependencyTracker;
 
 uses
@@ -9,7 +16,7 @@ uses
   ProjectNameForm in 'ProjectNameForm.pas' {fProjectNameForm},
   ProjectFrame in 'ProjectFrame.pas' {frmProjectFrame: TFrame},
   TextEditForm in 'TextEditForm.pas' {fTextEditForm},
-  ProjectsSelectForm in 'ProjectsSelectForm.pas' {fProjectsSelect};
+  ProjectsSelectForm in 'ProjectsSelectForm.pas' {fProjectsSelectForm};
 
 {$R *.res}
 
@@ -19,8 +26,8 @@ begin
   Application.CreateForm(TfMainForm, fMainForm);
   Application.CreateForm(TfProjectNameForm, fProjectNameForm);
   Application.CreateForm(TfTextEditForm, fTextEditForm);
-  Application.CreateForm(TfProjectsSelect, fProjectsSelect);
+  Application.CreateForm(TfProjectsSelectForm, fProjectsSelectForm);
   fProjectNameForm.Initialize(fMainForm.Manager);
-  fProjectsSelect.Initialize(fMainForm.Manager);
+  fProjectsSelectForm.Initialize(fMainForm.Manager);
   Application.Run;
 end.

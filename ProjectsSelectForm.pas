@@ -1,3 +1,10 @@
+{-------------------------------------------------------------------------------
+
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-------------------------------------------------------------------------------}
 unit ProjectsSelectForm;
 
 interface
@@ -8,7 +15,7 @@ uses
   DepsTracker_Common, DepsTracker_Project, DepsTracker_Manager;
 
 type
-  TfProjectsSelect = class(TForm)
+  TfProjectsSelectForm = class(TForm)
     clbProjects: TCheckListBox;
     btnOK: TButton;
     btnCancel: TButton;
@@ -26,20 +33,20 @@ type
   end;
 
 var
-  fProjectsSelect: TfProjectsSelect;
+  fProjectsSelectForm: TfProjectsSelectForm;
 
 implementation
 
 {$R *.dfm}
 
-procedure TfProjectsSelect.Initialize(Manager: TDTManager);
+procedure TfProjectsSelectForm.Initialize(Manager: TDTManager);
 begin
 fManager:= Manager;
 end;
 
 //------------------------------------------------------------------------------
 
-Function TfProjectsSelect.SelectDependencies(Project: TDTProject; var Dependencies: TDTProjectArray): Boolean;
+Function TfProjectsSelectForm.SelectDependencies(Project: TDTProject; var Dependencies: TDTProjectArray): Boolean;
 var
   i,Cnt,Idx:  Integer;
 begin
@@ -82,7 +89,7 @@ end;
 
 //==============================================================================
 
-procedure TfProjectsSelect.btnOKClick(Sender: TObject);
+procedure TfProjectsSelectForm.btnOKClick(Sender: TObject);
 begin
 fAccepted := True;
 Close;
@@ -90,7 +97,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-procedure TfProjectsSelect.btnCancelClick(Sender: TObject);
+procedure TfProjectsSelectForm.btnCancelClick(Sender: TObject);
 begin
 Close;
 end;

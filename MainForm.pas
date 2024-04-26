@@ -1,3 +1,10 @@
+{-------------------------------------------------------------------------------
+
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-------------------------------------------------------------------------------}
 unit MainForm;
 
 interface
@@ -5,7 +12,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, XPMan, Menus, ProjectFrame, ComCtrls,
-  DepsTracker_Project, DepsTracker_Manager;
+  DepsTracker_Project, DepsTracker_Manager, ActnList;
 
 type
   TfMainForm = class(TForm)
@@ -25,10 +32,19 @@ type
     N3: TMenuItem;
     pmiProjects_ExitNS: TMenuItem;
     pmiProjects_Exit: TMenuItem;
+    eSearchFor: TEdit;
+    btnFindPrev: TButton;
+    btnFindNext: TButton;
     grbProjectDetails: TGroupBox;
     frmProjectFrame: TfrmProjectFrame;
     oXPManifest: TXPManifest;
     sbStatusBar: TStatusBar;
+    oActionList: TActionList;
+    actPrevItem: TAction;
+    actNextItem: TAction;
+    actFind: TAction;
+    actFindNext: TAction;
+    actFindPrev: TAction;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
@@ -45,6 +61,16 @@ type
     procedure pmiProjects_ExitNSClick(Sender: TObject);
     procedure pmiProjects_ExitClick(Sender: TObject);
     procedure pmiProjects_FullNamesClick(Sender: TObject);
+    procedure eSearchForEnter(Sender: TObject);
+    procedure eSearchForExit(Sender: TObject);
+    procedure eSearchForKeyPress(Sender: TObject; var Key: Char);
+    procedure btnFindPrevClick(Sender: TObject);
+    procedure btnFindNextClick(Sender: TObject);
+    procedure actPrevItemExecute(Sender: TObject);
+    procedure actNextItemExecute(Sender: TObject);
+    procedure actFindExecute(Sender: TObject);
+    procedure actFindPrevExecute(Sender: TObject);
+    procedure actFindNextExecute(Sender: TObject);
   private
     { Private declarations }
   protected
@@ -126,6 +152,8 @@ UpdateProjects;
 If lbProjects.Count > 0 then
   lbProjects.ItemIndex := 0;
 lbProjects.OnClick(Self);
+actPrevItem.ShortCut := ShortCut(VK_TAB,[ssCtrl,ssShift]);
+actNextItem.ShortCut := ShortCut(VK_TAB,[ssCtrl]);
 end;
 
 //------------------------------------------------------------------------------
@@ -167,7 +195,7 @@ If Button = mbRight then
     If Index >= 0 then
       begin
         lbProjects.ItemIndex := Index;
-        lbProjects.OnClick(nil);
+        lbProjects.OnClick(Self);
       end;
   end;
 end;
@@ -316,6 +344,122 @@ end;
 procedure TfMainForm.pmiProjects_ExitClick(Sender: TObject);
 begin
 Close;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TfMainForm.eSearchForEnter(Sender: TObject);
+begin
+If eSearchFor.Tag = 0 then
+  begin
+    eSearchFor.Font.Color := clWindowText;
+    eSearchFor.Text := '';
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TfMainForm.eSearchForExit(Sender: TObject);
+begin
+If Length(eSearchFor.Text) <= 0 then
+  begin
+    eSearchFor.Font.Color := clGrayText;
+    eSearchFor.Text := 'Search for...';
+    eSearchFor.Tag := 0;
+  end
+else eSearchFor.Tag := 1;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TfMainForm.eSearchForKeyPress(Sender: TObject; var Key: Char);
+begin
+If Key = #13 then
+  begin
+    Key := #0;  
+    btnFindNext.OnClick(Self);
+  end;
+end;
+ 
+//------------------------------------------------------------------------------
+
+procedure TfMainForm.btnFindPrevClick(Sender: TObject);
+begin
+actFindPrev.OnExecute(Self);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TfMainForm.btnFindNextClick(Sender: TObject);
+begin
+actFindNext.OnExecute(Self);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TfMainForm.actPrevItemExecute(Sender: TObject);
+begin
+If lbProjects.ItemIndex > 0 then
+  begin
+    lbProjects.ItemIndex := lbProjects.ItemIndex - 1;
+    lbProjects.OnClick(nil);
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TfMainForm.actNextItemExecute(Sender: TObject);
+begin
+If (lbProjects.Count > 0) and (lbProjects.ItemIndex < Pred(lbProjects.Count)) then
+  begin
+    lbProjects.ItemIndex := lbProjects.ItemIndex + 1;
+    lbProjects.OnClick(nil);
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TfMainForm.actFindExecute(Sender: TObject);
+begin
+eSearchFor.SetFocus;
+end;
+ 
+//------------------------------------------------------------------------------
+
+procedure TfMainForm.actFindPrevExecute(Sender: TObject);
+var
+  Index:  Integer;
+begin
+If (eSearchFor.Font.Color <> clGrayText) and (lbProjects.ItemIndex >= 0) then
+  begin
+    Index := Manager.SearchBackward(eSearchFor.Text,lbProjects.ItemIndex);
+    If Manager.CheckIndex(Index) then
+      begin
+        lbProjects.ItemIndex := Index;
+        lbProjects.OnClick(Self);
+      end
+    else Beep;
+  end
+else Beep;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TfMainForm.actFindNextExecute(Sender: TObject);
+var
+  Index:  Integer;
+begin
+If (eSearchFor.Font.Color <> clGrayText) and (lbProjects.ItemIndex >= 0) then
+  begin
+    Index := Manager.SearchForward(eSearchFor.Text,lbProjects.ItemIndex);
+    If Manager.CheckIndex(Index) then
+      begin
+        lbProjects.ItemIndex := Index;
+        lbProjects.OnClick(Self);
+      end
+    else Beep;
+  end
+else Beep;
 end;
 
 end.

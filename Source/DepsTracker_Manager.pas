@@ -1,3 +1,10 @@
+{-------------------------------------------------------------------------------
+
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-------------------------------------------------------------------------------}
 unit DepsTracker_Manager;
 
 {$INCLUDE '.\DepsTracker_defs.inc'}
@@ -7,7 +14,7 @@ interface
 uses
   AuxClasses,
   DepsTracker_Common, DepsTracker_Project;
-
+{$message 'add project Flagged'}
 {===============================================================================
 --------------------------------------------------------------------------------
                                    TDTManager
@@ -37,6 +44,8 @@ type
     destructor Destroy; override;
     Function LowIndex: Integer; override;
     Function HighIndex: Integer; override;
+    Function SearchForward(const Str: String; FromIndex: Integer = -1): Integer; virtual;
+    Function SearchBackward(const Str: String; FromIndex: Integer = -1): Integer; virtual;
     Function IndexOf(Project: TDTProject): Integer; overload; virtual;
     Function IndexOf(const ProjectName: String): Integer; overload; virtual;
     Function Find(Project: TDTProject; out Index: Integer): Boolean; overload; virtual;
@@ -55,8 +64,8 @@ type
 implementation
 
 uses
-  AuxTypes, Classes,
-  StrRect, ListSorters, BinaryStreamingLite;
+  Classes, StrUtils,
+  AuxTypes, StrRect, ListSorters, BinaryStreamingLite;
 
 {===============================================================================
 --------------------------------------------------------------------------------
@@ -209,6 +218,58 @@ end;
 Function TDTManager.HighIndex: Integer;
 begin
 Result := Pred(fProjectCount);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TDTManager.SearchForward(const Str: String; FromIndex: Integer = -1): Integer;
+var
+  i:  Integer;
+begin
+Result := -1;
+If Count > 0 then
+  begin
+    If not CheckIndex(FromIndex) then
+      FromIndex := Pred(LowIndex);
+    For i := Succ(FromIndex) to HighIndex do
+      If AnsiContainsText(fProjects[i].Name,Str) then
+        begin
+          Result := i;
+          Exit;
+        end;
+    For i := LowIndex to Pred(FromIndex) do
+      If AnsiContainsText(fProjects[i].Name,Str) then
+        begin
+          Result := i;
+          Exit;
+        end;
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TDTManager.SearchBackward(const Str: String; FromIndex: Integer = -1): Integer;
+var
+  i:  Integer;
+begin
+Result := -1;
+If Count > 0 then
+  begin
+    If not CheckIndex(FromIndex) then
+      FromIndex := Succ(HighIndex);
+    For i := Pred(FromIndex) downto LowIndex do
+      If AnsiContainsText(fProjects[i].Name,Str) then
+        begin
+          Result := i;
+          Exit;
+        end;
+    For i := HighIndex downto Succ(FromIndex) do
+      If AnsiContainsText(fProjects[i].Name,Str) then
+        begin
+          Result := i;
+          Exit;
+        end;
+  end;
 end;
 
 //------------------------------------------------------------------------------
