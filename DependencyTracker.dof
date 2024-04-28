@@ -110,8 +110,8 @@ IncludeVerInfo=1
 AutoIncBuild=1
 MajorVer=1
 MinorVer=0
-Release=0
-Build=21
+Release=1
+Build=22
 Debug=0
 PreRelease=0
 Special=0
@@ -122,13 +122,13 @@ CodePage=1250
 [Version Info Keys]
 CompanyName=František Milt
 FileDescription=Dependency Tracker application
-FileVersion=1.0.0.21
+FileVersion=1.0.1.22
 InternalName=Dependency Tracker
 LegalCopyright=©2024 František Milt
 LegalTrademarks=Dependency Tracker
 OriginalFilename=DependencyTracker.exe
 ProductName=Dependency Tracker
-ProductVersion=1.0.0.0
+ProductVersion=1.0.1
 Comments=Utility for units/projects dependecy tracking
 [HistoryLists\hlUnitAliases]
 Count=1

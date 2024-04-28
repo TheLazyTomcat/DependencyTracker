@@ -138,6 +138,7 @@ type
     procedure DependenciesDelete(Index: Integer); virtual;
     procedure DependenciesClear; virtual;
     // indirect lists
+    Function IndirectDependenciesFind(Dependency: TDTProject; out Index: Integer): Boolean; virtual;
     procedure EnumerateIndirectDependencies; virtual;
     procedure EnumerateIndirectDependents; virtual;
     // utility
@@ -1090,10 +1091,28 @@ end;
 
 //------------------------------------------------------------------------------
 
+Function TDTProject.IndirectDependenciesFind(Dependency: TDTProject; out Index: Integer): Boolean;
+var
+  i:  Integer;
+begin
+Index := -1;
+Result := False;
+For i := IndirectDependenciesLowIndex to IndirectDependenciesHighIndex do
+  If fIndirDependencies[i] = Dependency then
+    begin
+      Index := i;
+      Result := True;
+      Break{For i};
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
 procedure TDTProject.EnumerateIndirectDependencies;
 var
-  Vector: TDTAuxProjectVector;
-  i,Idx:  Integer;
+  Vector:   TDTAuxProjectVector;
+  i,j,Idx:  Integer;
+  Dummy:    Integer;
 begin
 If BeginInterlockedOperation(iopDepsEnum) then
 try
@@ -1106,7 +1125,19 @@ try
     For i := DependenciesLowIndex to DependenciesHighIndex do
       If Vector.Find(fDependencies[i].BoundObject as TDTProject,Idx) then
         begin
-          fDependencies[i].IsAlsoIndirect := True;
+        {
+          Look if the i-th dependency is also an indirect dependency, but not
+          in its own (indirect) dependencies.
+        }
+          fDependencies[i].IsAlsoIndirect := False;
+          For j := DependenciesLowIndex to DependenciesHighIndex do
+            If i <> j then
+              If Dependencies[j].DependenciesFind(Dependencies[i],Dummy) or
+                 Dependencies[j].IndirectDependenciesFind(Dependencies[i],Dummy) then
+                begin
+                  fDependencies[i].IsAlsoIndirect := True;
+                  Break{For j};
+                end;
           Vector.Delete(Idx);
         end
       else fDependencies[i].IsAlsoIndirect := False;

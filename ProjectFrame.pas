@@ -575,6 +575,7 @@ procedure TfrmProjectFrame.btnDepReportClick(Sender: TObject);
 var
   Report: String;
 begin
+SaveDependency;
 with fProject.CreateDependencyReport do
 try
   Report := Text;
